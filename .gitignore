@@ -1,0 +1,43 @@
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.ipynb_checkpoints/
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Editors and IDEs
+.idea/
+.vscode/
+*.swp
+
+# System files
+.DS_Store
+Thumbs.db
+
+# Build and packaging artifacts
+build/
+dist/
+*.egg-info/
+*.log
+*.tmp
+*.zip
+
+# Training artifacts
+result/
+best_model.pth
+*.pth
+wandb/
+runs/
+
+# Local data and inference inputs
+data/
+test_images/
+
+# Course submission bundle, kept only for local packaging
+课程设计Part2_提交材料/
