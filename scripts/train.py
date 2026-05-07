@@ -1,22 +1,32 @@
 import argparse
 import csv
+import sys
 from pathlib import Path
 
-import matplotlib.pyplot as plt
 import torch
 from torch import nn
 from torch.utils.data import DataLoader, Subset
 
-from dataset import CLASS_NAMES, EvalTransform, HandPostureDataset, TrainTransform, stratified_split_indices
-from model import build_model
-from utils import get_device, save_checkpoint
+ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT / "src"))
+
+from hand_posture_recognition import (  # noqa: E402
+    CLASS_NAMES,
+    EvalTransform,
+    HandPostureDataset,
+    TrainTransform,
+    build_model,
+    get_device,
+    save_checkpoint,
+    stratified_split_indices,
+)
 
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Train a hand posture classifier.")
     parser.add_argument("--data_dir", default="./data/Hand_Posture_Hard_Stu")
-    parser.add_argument("--output_dir", default="./result")
-    parser.add_argument("--model_path", default="./best_model.pth")
+    parser.add_argument("--output_dir", default="./outputs")
+    parser.add_argument("--model_path", default="./outputs/checkpoints/best_model.pth")
     parser.add_argument("--epochs", type=int, default=20)
     parser.add_argument("--batch_size", type=int, default=64)
     parser.add_argument("--lr", type=float, default=1e-3)
@@ -67,6 +77,8 @@ def run_epoch(
 
 
 def plot_history(history_path: Path, output_path: Path) -> None:
+    import matplotlib.pyplot as plt
+
     rows = list(csv.DictReader(history_path.open(encoding="utf-8")))
     epochs = [int(row["epoch"]) for row in rows]
     train_loss = [float(row["train_loss"]) for row in rows]
@@ -90,6 +102,7 @@ def plot_history(history_path: Path, output_path: Path) -> None:
     plt.legend()
 
     plt.tight_layout()
+    output_path.parent.mkdir(parents=True, exist_ok=True)
     plt.savefig(output_path, dpi=150)
     plt.close()
 
@@ -100,7 +113,9 @@ def main() -> None:
 
     device = get_device(args.device)
     output_dir = Path(args.output_dir)
+    results_dir = output_dir / "results"
     output_dir.mkdir(parents=True, exist_ok=True)
+    results_dir.mkdir(parents=True, exist_ok=True)
 
     train_source = HandPostureDataset(args.data_dir, transform=TrainTransform(args.image_size))
     eval_source = HandPostureDataset(args.data_dir, transform=EvalTransform(args.image_size))
@@ -129,7 +144,7 @@ def main() -> None:
     optimizer = torch.optim.AdamW(model.parameters(), lr=args.lr, weight_decay=1e-4)
     scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=args.epochs)
 
-    history_path = output_dir / "training_history.csv"
+    history_path = results_dir / "training_history.csv"
     best_acc = 0.0
     with history_path.open("w", newline="", encoding="utf-8") as handle:
         writer = csv.writer(handle)
@@ -148,7 +163,7 @@ def main() -> None:
                 best_acc = val_acc
                 save_checkpoint(args.model_path, model, CLASS_NAMES, args.image_size, best_acc)
 
-    plot_path = output_dir / "training_curves.png"
+    plot_path = results_dir / "training_curves.png"
     plot_history(history_path, plot_path)
     print(f"best validation accuracy: {best_acc:.4f}")
     print(f"saved model: {args.model_path}")

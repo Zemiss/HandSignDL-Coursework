@@ -17,6 +17,8 @@ def save_checkpoint(
     image_size: int,
     val_acc: float,
 ) -> None:
+    path = Path(path)
+    path.parent.mkdir(parents=True, exist_ok=True)
     torch.save(
         {
             "model_state": model.state_dict(),
@@ -33,3 +35,4 @@ def load_checkpoint(path: str | Path, device: torch.device) -> dict[str, Any]:
     if "model_state" not in checkpoint:
         raise ValueError(f"{path} is not a checkpoint saved by train.py.")
     return checkpoint
+

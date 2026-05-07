@@ -23,37 +23,37 @@ A, B, C, Five, Point, V
 3. 对训练图像执行随机裁剪、随机水平翻转、颜色扰动和亮度扰动。
 4. 构建轻量 CNN 模型，输出 6 类分类结果。
 5. 使用交叉熵损失、AdamW 优化器和余弦退火学习率调度器进行训练。
-6. 在验证集准确率提升时保存最优模型到 `best_model.pth`。
-7. 使用 `test.py` 加载模型，对指定目录下的 PNG 图片逐张推理。
+6. 在验证集准确率提升时保存最优模型到 `outputs/checkpoints/best_model.pth`。
+7. 使用 `scripts/evaluate.py` 加载模型，对指定目录下的 PNG 图片逐张推理。
 
 ## 4. 程序设计
 
-### 4.1 `dataset.py`
+### 4.1 `src/hand_posture_recognition/preprocessing.py`
 
 - 定义类别顺序：`A, B, C, Five, Point, V`
 - 实现训练集增强与验证集预处理
 - 实现数据集扫描和分层划分
 
-### 4.2 `model.py`
+### 4.2 `src/hand_posture_recognition/model.py`
 
 - 定义 4 个卷积块的 CNN
 - 每个卷积块包含卷积、BatchNorm、ReLU 和池化
 - 使用全局平均池化后接全连接分类层
 
-### 4.3 `train.py`
+### 4.3 `scripts/train.py`
 
 - 负责训练和验证循环
 - 记录每轮的 loss 和 accuracy
 - 保存验证集表现最好的模型权重
 - 导出训练曲线图和训练历史 CSV
 
-### 4.4 `test.py`
+### 4.4 `scripts/evaluate.py`
 
 - 独立推理脚本
 - 读取指定目录下全部 PNG 图片
 - 输出每张图片的预测类别
 
-### 4.5 `utils.py`
+### 4.5 `src/hand_posture_recognition/utils.py`
 
 - 提供设备选择逻辑
 - 提供 checkpoint 保存与加载函数
@@ -63,7 +63,7 @@ A, B, C, Five, Point, V
 训练命令如下：
 
 ```powershell
-python train.py --data_dir ./data/Hand_Posture_Hard_Stu --epochs 20 --batch_size 64 --model_path ./best_model.pth
+python scripts/train.py --data_dir ./data/Hand_Posture_Hard_Stu --epochs 20 --batch_size 64
 ```
 
 训练过程中会输出每轮结果，并保存最优模型。实验中记录到的最高验证集准确率为：
@@ -75,7 +75,7 @@ python train.py --data_dir ./data/Hand_Posture_Hard_Stu --epochs 20 --batch_size
 推理命令如下：
 
 ```powershell
-python test.py --image_dir ./test_images --model_path ./best_model.pth
+python scripts/evaluate.py --image_dir ./test_images --model_path ./outputs/checkpoints/best_model.pth
 ```
 
 输出格式示例：
@@ -91,3 +91,4 @@ image_003.png: Point
 本实验中的 CNN 结构较轻量，适合 64x64 左右的小尺寸手势图像。对于背景简单、姿态变化不大的样本，模型可以取得较好的分类效果。数据增强对提升泛化能力有帮助，尤其是在亮度变化、轻微位移和翻转场景下。
 
 当前实现已经满足课程要求中的训练、验证、独立测试和模型保存需求。若后续继续提升效果，可以尝试更深的预训练模型，或者进一步增加数据增强策略与错误样本分析。
+

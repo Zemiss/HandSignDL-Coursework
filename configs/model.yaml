@@ -1,0 +1,4 @@
+model_name: hand_posture_cnn
+num_classes: 6
+dropout: 0.25
+

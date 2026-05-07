@@ -1,12 +1,14 @@
 import argparse
+import sys
 from pathlib import Path
 
 import torch
 from PIL import Image
 
-from dataset import CLASS_NAMES, EvalTransform
-from model import build_model
-from utils import get_device, load_checkpoint
+ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT / "src"))
+
+from hand_posture_recognition import CLASS_NAMES, EvalTransform, build_model, get_device, load_checkpoint  # noqa: E402
 
 
 def parse_args() -> argparse.Namespace:
@@ -46,3 +48,4 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+

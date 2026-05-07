@@ -20,7 +20,7 @@ env/
 .DS_Store
 Thumbs.db
 
-# Build and packaging artifacts
+# Packaging and logs
 build/
 dist/
 *.egg-info/
@@ -28,16 +28,16 @@ dist/
 *.tmp
 *.zip
 
-# Training artifacts
+# Project outputs
+outputs/*
+!outputs/README.md
 result/
 best_model.pth
 *.pth
-wandb/
-runs/
 
-# Local data and inference inputs
-data/
+# Local large data and inference inputs
+data/Hand_Posture_Hard_Stu/
 test_images/
 
-# Course submission bundle, kept only for local packaging
+# Submission bundle kept for local packaging
 课程设计Part2_提交材料/
