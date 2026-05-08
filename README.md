@@ -1,5 +1,8 @@
 ﻿# 机器视觉原理课程作业：深度学习手势识别
 
+![Python >=3.10](https://img.shields.io/badge/Python->=3.10-blue.svg)
+![PyTorch >=2.2](https://img.shields.io/badge/PyTorch->=2.2-yellow.svg)
+
 这是一个基于 PyTorch 的手势姿态识别项目，采用标准 `src/` 目录结构。
 
 ## 项目结构

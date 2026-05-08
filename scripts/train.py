@@ -27,7 +27,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--data_dir", default="./data/Hand_Posture_Hard_Stu")
     parser.add_argument("--output_dir", default="./outputs")
     parser.add_argument("--model_path", default="./outputs/checkpoints/best_model.pth")
-    parser.add_argument("--epochs", type=int, default=20)
+    parser.add_argument("--epochs", type=int, default=50)
     parser.add_argument("--batch_size", type=int, default=64)
     parser.add_argument("--lr", type=float, default=1e-3)
     parser.add_argument("--image_size", type=int, default=64)
@@ -74,6 +74,48 @@ def run_epoch(
         total_count += labels.size(0)
 
     return total_loss / total_count, total_correct / total_count
+
+
+def evaluate_validation(
+    model: nn.Module,
+    loader: DataLoader,
+    criterion: nn.Module,
+    device: torch.device,
+    class_names: list[str],
+) -> tuple[float, float, list[float]]:
+    model.eval()
+    total_loss = 0.0
+    total_correct = 0
+    total_count = 0
+    class_correct = [0 for _ in class_names]
+    class_total = [0 for _ in class_names]
+
+    with torch.no_grad():
+        for images, labels in loader:
+            images = images.to(device)
+            labels = labels.to(device)
+            logits = model(images)
+            loss = criterion(logits, labels)
+
+            predictions = logits.argmax(dim=1)
+            matches = predictions == labels
+
+            total_loss += loss.item() * labels.size(0)
+            total_correct += matches.sum().item()
+            total_count += labels.size(0)
+
+            for class_idx in range(len(class_names)):
+                class_mask = labels == class_idx
+                class_count = class_mask.sum().item()
+                if class_count:
+                    class_total[class_idx] += class_count
+                    class_correct[class_idx] += (predictions[class_mask] == labels[class_mask]).sum().item()
+
+    class_acc = [
+        (class_correct[idx] / class_total[idx]) if class_total[idx] else 0.0
+        for idx in range(len(class_names))
+    ]
+    return total_loss / total_count, total_correct / total_count, class_acc
 
 
 def plot_history(history_path: Path, output_path: Path) -> None:
@@ -148,16 +190,29 @@ def main() -> None:
     best_acc = 0.0
     with history_path.open("w", newline="", encoding="utf-8") as handle:
         writer = csv.writer(handle)
-        writer.writerow(["epoch", "train_loss", "train_acc", "val_loss", "val_acc"])
+        writer.writerow(
+            [
+                "epoch",
+                "train_loss",
+                "train_acc",
+                "val_loss",
+                "val_acc",
+                *[f"val_acc_{class_name}" for class_name in CLASS_NAMES],
+            ]
+        )
         for epoch in range(1, args.epochs + 1):
             train_loss, train_acc = run_epoch(model, train_loader, criterion, device, optimizer)
-            val_loss, val_acc = run_epoch(model, val_loader, criterion, device)
+            val_loss, val_acc, class_acc = evaluate_validation(model, val_loader, criterion, device, CLASS_NAMES)
             scheduler.step()
-            writer.writerow([epoch, train_loss, train_acc, val_loss, val_acc])
+            writer.writerow([epoch, train_loss, train_acc, val_loss, val_acc, *class_acc])
+            class_summary = " ".join(
+                f"{class_name}={acc:.4f}" for class_name, acc in zip(CLASS_NAMES, class_acc)
+            )
             print(
                 f"epoch {epoch:03d}: train_loss={train_loss:.4f} "
                 f"train_acc={train_acc:.4f} val_loss={val_loss:.4f} val_acc={val_acc:.4f}"
             )
+            print(f"  val per-class: {class_summary}")
 
             if val_acc > best_acc:
                 best_acc = val_acc
