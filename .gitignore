@@ -28,16 +28,6 @@ dist/
 *.tmp
 *.zip
 
-# Project outputs
-outputs/*
-!outputs/README.md
-result/
-best_model.pth
-*.pth
-
 # Local large data and inference inputs
-data/Hand_Posture_Hard_Stu/
-test_images/
+data/
 
-# Submission bundle kept for local packaging
-课程设计Part2_提交材料/

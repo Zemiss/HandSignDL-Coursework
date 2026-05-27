@@ -5,6 +5,7 @@ from .preprocessing import (
     EvalTransform,
     HandPostureDataset,
     TrainTransform,
+    ensure_rgb,
     image_to_tensor,
     stratified_split_indices,
 )
@@ -18,10 +19,10 @@ __all__ = [
     "TrainTransform",
     "accuracy_from_logits",
     "build_model",
+    "ensure_rgb",
     "get_device",
     "image_to_tensor",
     "load_checkpoint",
     "save_checkpoint",
     "stratified_split_indices",
 ]
-

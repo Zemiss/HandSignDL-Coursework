@@ -8,12 +8,14 @@ from PIL import Image
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 
-from hand_posture_recognition import CLASS_NAMES, build_model, get_device, image_to_tensor, load_checkpoint  # noqa: E402
+from hand_posture_recognition import CLASS_NAMES, build_model, ensure_rgb, get_device, image_to_tensor, load_checkpoint  # noqa: E402
+
+IMAGE_SUFFIXES = {".png", ".jpg", ".jpeg", ".bmp", ".webp"}
 
 
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Predict all PNG images in a folder.")
-    parser.add_argument("--image_dir", default="./test_images", help="Directory containing PNG images.")
+    parser = argparse.ArgumentParser(description="Predict all images in test_images by default.")
+    parser.add_argument("--image_dir", default="./test_images", help="Directory containing test images.")
     parser.add_argument(
         "--model_path",
         default="./outputs/checkpoints/best_model.pth",
@@ -24,10 +26,15 @@ def parse_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
+def collect_image_paths(image_dir: str | Path) -> list[Path]:
+    root = Path(image_dir)
+    return sorted(path for path in root.rglob("*") if path.is_file() and path.suffix.lower() in IMAGE_SUFFIXES)
+
+
 def build_tta_tensors(image: Image.Image, image_size: int) -> list[torch.Tensor]:
     # Mirror the training crop geometry and average over a few stable views.
     expanded_size = image_size + 8
-    image = image.convert("RGB").resize((expanded_size, expanded_size))
+    image = ensure_rgb(image).resize((expanded_size, expanded_size))
     crop_offsets = [
         (0, 0),
         (8, 0),
@@ -59,19 +66,21 @@ def predict_image(
 def main() -> None:
     args = parse_args()
     device = get_device(args.device)
+    print(f"loading model: {args.model_path}")
     checkpoint = load_checkpoint(args.model_path, device)
 
     class_names = checkpoint.get("class_names", CLASS_NAMES)
     image_size = args.image_size or checkpoint.get("image_size", 64)
 
-    model = build_model(num_classes=len(class_names)).to(device)
+    model = build_model(num_classes=len(class_names), pretrained=False).to(device)
     model.load_state_dict(checkpoint["model_state"])
     model.eval()
 
-    image_paths = sorted(Path(args.image_dir).rglob("*.png"))
+    image_paths = collect_image_paths(args.image_dir)
     if not image_paths:
-        raise RuntimeError(f"No PNG images found in {args.image_dir}")
+        raise RuntimeError(f"No supported images found in {args.image_dir}")
 
+    print(f"predicting {len(image_paths)} images from {args.image_dir}")
     with torch.no_grad():
         for image_path in image_paths:
             with Image.open(image_path) as image:

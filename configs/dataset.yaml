@@ -5,6 +5,5 @@ class_names:
   - Five
   - Point
   - V
-image_size: 64
+image_size: 224
 val_ratio: 0.2
-

@@ -1,5 +1,6 @@
 import torch
 from torch import nn
+from torchvision.models import ResNet50_Weights, resnet50
 
 
 class HandPostureCNN(nn.Module):
@@ -34,6 +35,8 @@ class HandPostureCNN(nn.Module):
         return self.classifier(x)
 
 
-def build_model(num_classes: int = 6) -> HandPostureCNN:
-    return HandPostureCNN(num_classes=num_classes)
-
+def build_model(num_classes: int = 6, pretrained: bool = True) -> nn.Module:
+    weights = ResNet50_Weights.DEFAULT if pretrained else None
+    model = resnet50(weights=weights)
+    model.fc = nn.Linear(model.fc.in_features, num_classes)
+    return model

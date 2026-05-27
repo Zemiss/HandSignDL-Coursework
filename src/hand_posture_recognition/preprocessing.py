@@ -16,7 +16,7 @@ class TrainTransform:
         self.image_size = image_size
 
     def __call__(self, image: Image.Image) -> torch.Tensor:
-        image = image.convert("RGB").resize((self.image_size + 8, self.image_size + 8))
+        image = ensure_rgb(image).resize((self.image_size + 8, self.image_size + 8))
         left = random.randint(0, 8)
         top = random.randint(0, 8)
         image = image.crop((left, top, left + self.image_size, top + self.image_size))
@@ -32,8 +32,14 @@ class EvalTransform:
         self.image_size = image_size
 
     def __call__(self, image: Image.Image) -> torch.Tensor:
-        image = image.convert("RGB").resize((self.image_size, self.image_size))
+        image = ensure_rgb(image).resize((self.image_size, self.image_size))
         return image_to_tensor(image)
+
+
+def ensure_rgb(image: Image.Image) -> Image.Image:
+    if image.mode == "P" and "transparency" in image.info:
+        return image.convert("RGBA").convert("RGB")
+    return image.convert("RGB")
 
 
 def image_to_tensor(image: Image.Image) -> torch.Tensor:
@@ -75,7 +81,7 @@ class HandPostureDataset(Dataset):
     def __getitem__(self, index: int) -> tuple[torch.Tensor, int]:
         path, label = self.samples[index]
         with Image.open(path) as image:
-            tensor = self.transform(image) if self.transform else image_to_tensor(image.convert("RGB"))
+            tensor = self.transform(image) if self.transform else image_to_tensor(ensure_rgb(image))
         return tensor, label
 
 
@@ -104,4 +110,3 @@ def stratified_split_indices(
     rng.shuffle(train_indices)
     rng.shuffle(val_indices)
     return train_indices, val_indices
-

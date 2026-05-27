@@ -2,10 +2,10 @@ project: hand_posture_recognition
 data_dir: ./data/Hand_Posture_Hard_Stu
 output_dir: ./outputs
 model_path: ./outputs/checkpoints/best_model.pth
-image_size: 64
+image_size: 224
 val_ratio: 0.2
-epochs: 20
+epochs: 5
 batch_size: 64
 lr: 0.001
-device: auto
-
+device: cuda
+progress_interval: 10

@@ -27,14 +27,16 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--data_dir", default="./data/Hand_Posture_Hard_Stu")
     parser.add_argument("--output_dir", default="./outputs")
     parser.add_argument("--model_path", default="./outputs/checkpoints/best_model.pth")
-    parser.add_argument("--epochs", type=int, default=50)
+    parser.add_argument("--epochs", type=int, default=5)
     parser.add_argument("--batch_size", type=int, default=64)
     parser.add_argument("--lr", type=float, default=1e-3)
-    parser.add_argument("--image_size", type=int, default=64)
+    parser.add_argument("--image_size", type=int, default=224)
     parser.add_argument("--val_ratio", type=float, default=0.2)
     parser.add_argument("--num_workers", type=int, default=0)
-    parser.add_argument("--device", default="auto", help="auto, cpu, cuda, or cuda:0.")
+    parser.add_argument("--device", default="cuda", help="cuda or cuda:0. Training requires GPU by default.")
     parser.add_argument("--seed", type=int, default=42)
+    parser.add_argument("--no_pretrained", action="store_true", help="Train ResNet50 without ImageNet weights.")
+    parser.add_argument("--progress_interval", type=int, default=10, help="Print training progress every N batches.")
     return parser.parse_args()
 
 
@@ -44,20 +46,33 @@ def set_seed(seed: int) -> None:
         torch.cuda.manual_seed_all(seed)
 
 
+def resolve_training_device(preferred: str) -> torch.device:
+    device = get_device(preferred)
+    if device.type != "cuda" or not torch.cuda.is_available():
+        raise RuntimeError(
+            "GPU training requires CUDA. Install a CUDA-enabled PyTorch build or pass training to a CUDA machine."
+        )
+    return device
+
+
 def run_epoch(
     model: nn.Module,
     loader: DataLoader,
     criterion: nn.Module,
     device: torch.device,
     optimizer: torch.optim.Optimizer | None = None,
+    progress_interval: int = 0,
+    epoch: int | None = None,
+    total_epochs: int | None = None,
 ) -> tuple[float, float]:
     training = optimizer is not None
     model.train(training)
     total_loss = 0.0
     total_correct = 0
     total_count = 0
+    total_batches = len(loader)
 
-    for images, labels in loader:
+    for batch_idx, (images, labels) in enumerate(loader, start=1):
         images = images.to(device)
         labels = labels.to(device)
 
@@ -72,6 +87,15 @@ def run_epoch(
         total_loss += loss.item() * labels.size(0)
         total_correct += (logits.argmax(dim=1) == labels).sum().item()
         total_count += labels.size(0)
+        if training and progress_interval > 0 and (batch_idx % progress_interval == 0 or batch_idx == total_batches):
+            epoch_label = f"{epoch:03d}/{total_epochs:03d}" if epoch and total_epochs else "???/???"
+            avg_loss = total_loss / total_count
+            avg_acc = total_correct / total_count
+            print(
+                f"epoch {epoch_label} batch {batch_idx:03d}/{total_batches:03d}: "
+                f"train_loss={avg_loss:.4f} train_acc={avg_acc:.4f}",
+                flush=True,
+            )
 
     return total_loss / total_count, total_correct / total_count
 
@@ -153,7 +177,8 @@ def main() -> None:
     args = parse_args()
     set_seed(args.seed)
 
-    device = get_device(args.device)
+    device = resolve_training_device(args.device)
+    print(f"training device: {device}", flush=True)
     output_dir = Path(args.output_dir)
     results_dir = output_dir / "results"
     output_dir.mkdir(parents=True, exist_ok=True)
@@ -181,7 +206,7 @@ def main() -> None:
         num_workers=args.num_workers,
     )
 
-    model = build_model(num_classes=len(CLASS_NAMES)).to(device)
+    model = build_model(num_classes=len(CLASS_NAMES), pretrained=not args.no_pretrained).to(device)
     criterion = nn.CrossEntropyLoss()
     optimizer = torch.optim.AdamW(model.parameters(), lr=args.lr, weight_decay=1e-4)
     scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=args.epochs)
@@ -201,7 +226,16 @@ def main() -> None:
             ]
         )
         for epoch in range(1, args.epochs + 1):
-            train_loss, train_acc = run_epoch(model, train_loader, criterion, device, optimizer)
+            train_loss, train_acc = run_epoch(
+                model,
+                train_loader,
+                criterion,
+                device,
+                optimizer,
+                progress_interval=args.progress_interval,
+                epoch=epoch,
+                total_epochs=args.epochs,
+            )
             val_loss, val_acc, class_acc = evaluate_validation(model, val_loader, criterion, device, CLASS_NAMES)
             scheduler.step()
             writer.writerow([epoch, train_loss, train_acc, val_loss, val_acc, *class_acc])
