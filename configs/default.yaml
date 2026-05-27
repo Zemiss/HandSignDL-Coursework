@@ -1,4 +1,4 @@
-project: hand_posture_recognition
+project: deeplearn
 data_dir: ./data/Hand_Posture_Hard_Stu
 output_dir: ./outputs
 model_path: ./outputs/checkpoints/best_model.pth

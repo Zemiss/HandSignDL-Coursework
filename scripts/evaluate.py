@@ -8,7 +8,9 @@ from PIL import Image
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 
-from hand_posture_recognition import CLASS_NAMES, build_model, ensure_rgb, get_device, image_to_tensor, load_checkpoint  # noqa: E402
+from model import build_model  # noqa: E402
+from preprocessing import CLASS_NAMES, ensure_rgb, image_to_tensor  # noqa: E402
+from utils import get_device, load_checkpoint  # noqa: E402
 
 IMAGE_SUFFIXES = {".png", ".jpg", ".jpeg", ".bmp", ".webp"}
 

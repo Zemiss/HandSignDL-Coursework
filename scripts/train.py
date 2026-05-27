@@ -10,16 +10,15 @@ from torch.utils.data import DataLoader, Subset
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 
-from hand_posture_recognition import (  # noqa: E402
+from model import build_model  # noqa: E402
+from preprocessing import (  # noqa: E402
     CLASS_NAMES,
     EvalTransform,
     HandPostureDataset,
     TrainTransform,
-    build_model,
-    get_device,
-    save_checkpoint,
     stratified_split_indices,
 )
+from utils import get_device, save_checkpoint  # noqa: E402
 
 
 def parse_args() -> argparse.Namespace:

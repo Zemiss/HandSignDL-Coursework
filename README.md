@@ -7,7 +7,7 @@
 
 ## 项目结构
 
-- `src/hand_posture_recognition/`：核心库代码
+- `src/`：核心库代码
 - `scripts/`：训练和推理入口
 - `configs/`：默认配置
 - `data/`：数据集目录
@@ -27,7 +27,7 @@
 
 ## 测试代码与模型文件位置
 
-单独用于测试/推理的代码在 `scripts/evaluate.py`。
+单独用于测试/推理的代码在 `scripts/evaluate.py`，把需要测试的图片放在`./test_images`下即可。
 
 该测试代码默认加载的训练好的分类模型文件在 `outputs/checkpoints/best_model.pth`。如果模型文件放在其他位置，可以通过 `--model_path` 指定。
 
