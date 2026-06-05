@@ -55,6 +55,11 @@ def parse_args() -> argparse.Namespace:
         default=not config.get("pretrained", True),
         help="Train ResNet50 without ImageNet weights.",
     )
+    parser.add_argument(
+        "--pretrained_weights_path",
+        default=config.get("pretrained_weights_path", "./model/resnet50-11ad3fa6.pth"),
+        help="Local ResNet50 ImageNet weights path. If it exists, training uses it instead of downloading.",
+    )
     parser.add_argument("--progress_interval", type=int, default=config.get("progress_interval", 10), help="Print training progress every N batches.")
     return parser.parse_args()
 
@@ -234,6 +239,16 @@ def main() -> None:
     class_names = config.get("class_names", CLASS_NAMES)
     set_seed(args.seed)
 
+    # Resolve path-like args relative to the project `main` directory (ROOT)
+    def _resolve_relative(p: str | Path) -> Path:
+        p = Path(p)
+        return p if p.is_absolute() else (ROOT / p)
+
+    args.data_dir = _resolve_relative(args.data_dir)
+    args.output_dir = _resolve_relative(args.output_dir)
+    args.model_path = _resolve_relative(args.model_path)
+    args.pretrained_weights_path = _resolve_relative(args.pretrained_weights_path)
+
     device = resolve_training_device(args.device)
     print(f"training device: {device}", flush=True)
     output_dir = Path(args.output_dir)
@@ -263,7 +278,11 @@ def main() -> None:
         num_workers=args.num_workers,
     )
 
-    model = build_model(num_classes=len(class_names), pretrained=not args.no_pretrained).to(device)
+    model = build_model(
+        num_classes=len(class_names),
+        pretrained=not args.no_pretrained,
+        pretrained_weights_path=args.pretrained_weights_path,
+    ).to(device)
     criterion = nn.CrossEntropyLoss()
     optimizer = torch.optim.AdamW(model.parameters(), lr=args.lr, weight_decay=1e-4)
     scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=args.epochs)

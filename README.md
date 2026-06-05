@@ -41,6 +41,7 @@ cd main
 conda run -n myenv python train.py `
   --train_data_dir ../data/Hand_Posture_Hard_Stu `
   --output_model_path ./model/best_model.pth `
+  --pretrained_weights_path ./model/resnet50-11ad3fa6.pth `
   --output_dir ./outputs `
   --epochs 5 `
   --device cuda `
@@ -53,7 +54,7 @@ conda run -n myenv python train.py `
 conda run -n myenv python -c "import torch; print(torch.cuda.is_available())"
 ```
 
-如果输出 `False`，需要先安装 CUDA 版本的 PyTorch，否则训练脚本会直接报错停止。训练脚本默认调用 ResNet50 进行微调。如果当前环境无法下载 ImageNet 预训练权重，可以加 `--no_pretrained` 从随机初始化开始训练。
+如果输出 `False`，需要先安装 CUDA 版本的 PyTorch，否则训练脚本会直接报错停止。训练脚本默认调用 ResNet50 进行微调，并会优先读取 `./model/resnet50-11ad3fa6.pth` 作为本地 ImageNet 预训练权重；如果该文件不存在，则使用 torchvision 默认逻辑下载权重。如果当前环境无法下载 ImageNet 预训练权重，也可以加 `--no_pretrained` 从随机初始化开始训练。
 
 推理：
 
@@ -73,6 +74,23 @@ conda run -n myenv python test.py `
 python -m pip install -e .
 ```
 
-## 说明
+## 常用完整命令
 
-训练和推理入口位于 `main/` 目录下的 `train.py` 和 `test.py`。
+```
+conda activate myenv
+cd C:\Users\12445\Desktop\3359_2411273_谢博_课程设计Part2
+```
+
+**训练：**
+
+python -m main.train
+
+```
+python -m main.train --train_data_dir data/Hand_Posture_Hard_Stu --epochs 7 --device cuda --progress_interval 1
+```
+
+**测试：**
+
+```
+python -m main.test --test_data_dir data/Hand_Posture_Hard_Stu --input_model_path main/model/best_model.pth --device cuda
+```

@@ -137,9 +137,19 @@ class HandPostureCNN(nn.Module):
         return self.classifier(x)
 
 
-def build_model(num_classes: int = 6, pretrained: bool = True) -> nn.Module:
-    weights = ResNet50_Weights.DEFAULT if pretrained else None
-    model = resnet50(weights=weights)
+def build_model(
+    num_classes: int = 6,
+    pretrained: bool = True,
+    pretrained_weights_path: str | Path | None = None,
+) -> nn.Module:
+    local_weights_path = Path(pretrained_weights_path) if pretrained_weights_path else None
+    if pretrained and local_weights_path and local_weights_path.exists():
+        model = resnet50(weights=None)
+        state_dict = torch.load(local_weights_path, map_location="cpu")
+        model.load_state_dict(state_dict)
+    else:
+        weights = ResNet50_Weights.DEFAULT if pretrained else None
+        model = resnet50(weights=weights)
     model.fc = nn.Linear(model.fc.in_features, num_classes)
     return model
 

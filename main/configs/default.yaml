@@ -2,9 +2,10 @@ project: deeplearn
 data_dir: ../data/Hand_Posture_Hard_Stu
 output_dir: ./outputs
 model_path: ./model/best_model.pth
+pretrained_weights_path: ./model/resnet50-11ad3fa6.pth
 image_size: 224
 val_ratio: 0.2
-epochs: 5
+epochs: 7
 batch_size: 64
 lr: 0.001
 device: cuda
