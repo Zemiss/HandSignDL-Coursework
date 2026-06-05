@@ -25,42 +25,45 @@ from core import (  # noqa: E402
 
 def parse_args() -> argparse.Namespace:
     config = load_project_config(ROOT)
+    paths = config.get("paths", {})
+    data = config.get("data", {})
+    train_cfg = config.get("train", {})
     parser = argparse.ArgumentParser(description="Train a hand posture classifier.")
     parser.add_argument(
         "--train_data_dir",
         "--data_dir",
         dest="data_dir",
-        default=config.get("train_data_dir", config.get("data_dir", "./data/Hand_Posture_Hard_Stu")),
+        default=paths.get("train_data_dir", paths.get("data_dir", "./data/Hand_Posture_Hard_Stu")),
         help="Training dataset directory.",
     )
-    parser.add_argument("--output_dir", default=config.get("output_dir", "./outputs"), help="Training results directory.")
+    parser.add_argument("--output_dir", default=paths.get("output_dir", "./outputs"), help="Training results directory.")
     parser.add_argument(
         "--output_model_path",
         "--model_path",
         dest="model_path",
-        default=config.get("model_path", "./model/best_model.pth"),
+        default=paths.get("model_path", "./model/best_model.pth"),
         help="Path where the best trained model will be saved.",
     )
-    parser.add_argument("--epochs", type=int, default=config.get("epochs", 5))
-    parser.add_argument("--batch_size", type=int, default=config.get("batch_size", 64))
-    parser.add_argument("--lr", type=float, default=config.get("lr", 1e-3))
-    parser.add_argument("--image_size", type=int, default=config.get("image_size", 224))
-    parser.add_argument("--val_ratio", type=float, default=config.get("val_ratio", 0.2))
+    parser.add_argument("--epochs", type=int, default=train_cfg.get("epochs", 5))
+    parser.add_argument("--batch_size", type=int, default=train_cfg.get("batch_size", 64))
+    parser.add_argument("--lr", type=float, default=train_cfg.get("lr", 1e-3))
+    parser.add_argument("--image_size", type=int, default=data.get("image_size", 224))
+    parser.add_argument("--val_ratio", type=float, default=data.get("val_ratio", 0.2))
     parser.add_argument("--num_workers", type=int, default=0)
-    parser.add_argument("--device", default=config.get("device", "cuda"), help="cuda or cuda:0. Training requires GPU by default.")
+    parser.add_argument("--device", default=train_cfg.get("device", "cuda"), help="cuda or cuda:0. Training requires GPU by default.")
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument(
         "--no_pretrained",
         action="store_true",
-        default=not config.get("pretrained", True),
+        default=not train_cfg.get("pretrained", True),
         help="Train ResNet50 without ImageNet weights.",
     )
     parser.add_argument(
         "--pretrained_weights_path",
-        default=config.get("pretrained_weights_path", "./model/resnet50-11ad3fa6.pth"),
+        default=paths.get("pretrained_weights_path", "./model/resnet50-11ad3fa6.pth"),
         help="Local ResNet50 ImageNet weights path. If it exists, training uses it instead of downloading.",
     )
-    parser.add_argument("--progress_interval", type=int, default=config.get("progress_interval", 10), help="Print training progress every N batches.")
+    parser.add_argument("--progress_interval", type=int, default=train_cfg.get("progress_interval", 10), help="Print training progress every N batches.")
     return parser.parse_args()
 
 
@@ -236,7 +239,8 @@ def plot_history(history_path: Path, output_path: Path) -> None:
 def main() -> None:
     args = parse_args()
     config = load_project_config(ROOT)
-    class_names = config.get("class_names", CLASS_NAMES)
+    data = config.get("data", {})
+    class_names = data.get("class_names", CLASS_NAMES)
     set_seed(args.seed)
 
     # Resolve path-like args relative to the project `main` directory (ROOT)

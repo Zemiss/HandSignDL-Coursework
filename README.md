@@ -6,7 +6,7 @@
 这是一个基于 PyTorch 的手势姿态识别项目，采用标准 `src/` 目录结构。模型使用 torchvision 的 ResNet50，并默认加载 ImageNet 预训练权重进行微调。
 
 
-训练和测试的默认参数都集中在 `main/configs/default.yaml`，包括训练数据路径、测试数据路径、模型路径、设备、轮数和进度打印频率。命令行参数仍然可以覆盖这些默认值，例如临时加 `--epochs 7`。
+训练和测试的默认参数都集中在 `main/configs/default.yaml`，现在按 `paths`、`data`、`train` 分组管理。命令行参数仍然可以覆盖这些默认值，例如临时加 `--epochs 7`。
 ## 项目结构
 
 - `main/src/core.py`：核心库代码
@@ -63,7 +63,7 @@ conda run -n myenv python train.py `
   --progress_interval 10
 ```
 
-训练脚本默认训练 5 轮、要求使用 GPU 训练，并会每隔 `--progress_interval` 个 batch 打印一次训练进度。可以先检查当前环境是否支持 CUDA：
+训练脚本默认训练 7 轮、要求使用 GPU 训练，并会每隔 `--progress_interval` 个 batch 打印一次训练进度。可以先检查当前环境是否支持 CUDA：
 
 ```powershell
 conda run -n myenv python -c "import torch; print(torch.cuda.is_available())"

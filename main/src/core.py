@@ -3,6 +3,7 @@ from pathlib import Path
 from typing import Any, Callable, Sequence
 
 import numpy as np
+import yaml
 import torch
 from PIL import Image, ImageEnhance
 from torch import nn
@@ -14,45 +15,13 @@ CONFIG_FILES = ("default.yaml", "dataset.yaml", "model.yaml")
 CLASS_NAMES = ["A", "B", "C", "Five", "Point", "V"]
 
 
-def _parse_scalar(value: str) -> Any:
-    value = value.strip()
-    if value.lower() == "true":
-        return True
-    if value.lower() == "false":
-        return False
-    try:
-        if "." in value:
-            return float(value)
-        return int(value)
-    except ValueError:
-        return value
-
-
-def _load_simple_yaml(path: Path) -> dict[str, Any]:
-    config: dict[str, Any] = {}
-    current_list_key: str | None = None
-
-    for raw_line in path.read_text(encoding="utf-8").splitlines():
-        line = raw_line.rstrip()
-        if not line.strip() or line.lstrip().startswith("#"):
-            continue
-        if line.startswith("  - ") and current_list_key:
-            config[current_list_key].append(_parse_scalar(line[4:]))
-            continue
-
-        current_list_key = None
-        key, separator, value = line.partition(":")
-        if not separator:
-            raise ValueError(f"Invalid config line in {path}: {line}")
-        key = key.strip()
-        value = value.strip()
-        if value:
-            config[key] = _parse_scalar(value)
-        else:
-            config[key] = []
-            current_list_key = key
-
-    return config
+def _load_yaml_config(path: Path) -> dict[str, Any]:
+    loaded = yaml.safe_load(path.read_text(encoding="utf-8"))
+    if loaded is None:
+        return {}
+    if not isinstance(loaded, dict):
+        raise ValueError(f"Expected {path} to contain a mapping at the top level.")
+    return loaded
 
 
 def load_project_config(root: str | Path | None = None) -> dict[str, Any]:
@@ -63,7 +32,7 @@ def load_project_config(root: str | Path | None = None) -> dict[str, Any]:
     for file_name in CONFIG_FILES:
         path = config_dir / file_name
         if path.exists():
-            config.update(_load_simple_yaml(path))
+            config.update(_load_yaml_config(path))
     return config
 
 

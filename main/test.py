@@ -23,23 +23,26 @@ IMAGE_SUFFIXES = {".png", ".jpg", ".jpeg", ".bmp", ".webp"}
 
 def parse_args() -> argparse.Namespace:
     config = load_project_config(ROOT)
+    paths = config.get("paths", {})
+    data = config.get("data", {})
+    train_cfg = config.get("train", {})
     parser = argparse.ArgumentParser(description="Predict all images in test_images by default.")
     parser.add_argument(
         "--test_data_dir",
         "--image_dir",
         dest="image_dir",
-        default=config.get("test_data_dir", "./test_images"),
+        default=paths.get("test_data_dir", "./test_images"),
         help="Directory containing test images.",
     )
     parser.add_argument(
         "--input_model_path",
         "--model_path",
         dest="model_path",
-        default=config.get("input_model_path", config.get("model_path", "./model/best_model.pth")),
+        default=paths.get("input_model_path", paths.get("model_path", "./model/best_model.pth")),
         help="Path to a trained .pth model.",
     )
     parser.add_argument("--image_size", type=int, default=None)
-    parser.add_argument("--device", default=config.get("device", "auto"), help="auto, cpu, cuda, or cuda:0.")
+    parser.add_argument("--device", default=train_cfg.get("device", "auto"), help="auto, cpu, cuda, or cuda:0.")
     return parser.parse_args()
 
 
@@ -83,12 +86,13 @@ def predict_image(
 def main() -> None:
     args = parse_args()
     config = load_project_config(ROOT)
+    data = config.get("data", {})
     device = get_device(args.device)
     print(f"loading model: {args.model_path}")
     checkpoint = load_checkpoint(args.model_path, device)
 
-    class_names = checkpoint.get("class_names", config.get("class_names", CLASS_NAMES))
-    image_size = args.image_size or checkpoint.get("image_size", config.get("image_size", 64))
+    class_names = checkpoint.get("class_names", data.get("class_names", CLASS_NAMES))
+    image_size = args.image_size or checkpoint.get("image_size", data.get("image_size", 64))
 
     model = build_model(num_classes=len(class_names), pretrained=False).to(device)
     model.load_state_dict(checkpoint["model_state"])
