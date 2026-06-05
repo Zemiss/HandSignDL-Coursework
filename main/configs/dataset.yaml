@@ -1,9 +1,0 @@
-class_names:
-  - A
-  - B
-  - C
-  - Five
-  - Point
-  - V
-image_size: 224
-val_ratio: 0.2

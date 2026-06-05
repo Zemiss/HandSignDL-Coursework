@@ -28,18 +28,18 @@ def parse_args() -> argparse.Namespace:
         "--test_data_dir",
         "--image_dir",
         dest="image_dir",
-        default="./test_images",
+        default=config.get("test_data_dir", "./test_images"),
         help="Directory containing test images.",
     )
     parser.add_argument(
         "--input_model_path",
         "--model_path",
         dest="model_path",
-        default=config.get("model_path", "./model/best_model.pth"),
+        default=config.get("input_model_path", config.get("model_path", "./model/best_model.pth")),
         help="Path to a trained .pth model.",
     )
     parser.add_argument("--image_size", type=int, default=None)
-    parser.add_argument("--device", default="auto", help="auto, cpu, cuda, or cuda:0.")
+    parser.add_argument("--device", default=config.get("device", "auto"), help="auto, cpu, cuda, or cuda:0.")
     return parser.parse_args()
 
 

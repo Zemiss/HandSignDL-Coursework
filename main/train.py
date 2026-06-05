@@ -30,7 +30,7 @@ def parse_args() -> argparse.Namespace:
         "--train_data_dir",
         "--data_dir",
         dest="data_dir",
-        default=config.get("data_dir", "./data/Hand_Posture_Hard_Stu"),
+        default=config.get("train_data_dir", config.get("data_dir", "./data/Hand_Posture_Hard_Stu")),
         help="Training dataset directory.",
     )
     parser.add_argument("--output_dir", default=config.get("output_dir", "./outputs"), help="Training results directory.")
