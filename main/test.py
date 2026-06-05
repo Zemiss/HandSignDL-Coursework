@@ -5,22 +5,37 @@ from pathlib import Path
 import torch
 from PIL import Image
 
-ROOT = Path(__file__).resolve().parents[1]
+ROOT = Path(__file__).resolve().parent
 sys.path.insert(0, str(ROOT / "src"))
 
-from model import build_model  # noqa: E402
-from preprocessing import CLASS_NAMES, ensure_rgb, image_to_tensor  # noqa: E402
-from utils import get_device, load_checkpoint  # noqa: E402
+from core import (  # noqa: E402
+    CLASS_NAMES,
+    build_model,
+    ensure_rgb,
+    get_device,
+    image_to_tensor,
+    load_checkpoint,
+    load_project_config,
+)
 
 IMAGE_SUFFIXES = {".png", ".jpg", ".jpeg", ".bmp", ".webp"}
 
 
 def parse_args() -> argparse.Namespace:
+    config = load_project_config(ROOT)
     parser = argparse.ArgumentParser(description="Predict all images in test_images by default.")
-    parser.add_argument("--image_dir", default="./test_images", help="Directory containing test images.")
     parser.add_argument(
+        "--test_data_dir",
+        "--image_dir",
+        dest="image_dir",
+        default="./test_images",
+        help="Directory containing test images.",
+    )
+    parser.add_argument(
+        "--input_model_path",
         "--model_path",
-        default="./outputs/checkpoints/best_model.pth",
+        dest="model_path",
+        default=config.get("model_path", "./model/best_model.pth"),
         help="Path to a trained .pth model.",
     )
     parser.add_argument("--image_size", type=int, default=None)
@@ -67,12 +82,13 @@ def predict_image(
 
 def main() -> None:
     args = parse_args()
+    config = load_project_config(ROOT)
     device = get_device(args.device)
     print(f"loading model: {args.model_path}")
     checkpoint = load_checkpoint(args.model_path, device)
 
-    class_names = checkpoint.get("class_names", CLASS_NAMES)
-    image_size = args.image_size or checkpoint.get("image_size", 64)
+    class_names = checkpoint.get("class_names", config.get("class_names", CLASS_NAMES))
+    image_size = args.image_size or checkpoint.get("image_size", config.get("image_size", 64))
 
     model = build_model(num_classes=len(class_names), pretrained=False).to(device)
     model.load_state_dict(checkpoint["model_state"])

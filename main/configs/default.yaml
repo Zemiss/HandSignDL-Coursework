@@ -1,7 +1,7 @@
 project: deeplearn
-data_dir: ./data/Hand_Posture_Hard_Stu
+data_dir: ../data/Hand_Posture_Hard_Stu
 output_dir: ./outputs
-model_path: ./outputs/checkpoints/best_model.pth
+model_path: ./model/best_model.pth
 image_size: 224
 val_ratio: 0.2
 epochs: 5

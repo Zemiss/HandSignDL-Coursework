@@ -7,36 +7,44 @@
 
 ## 项目结构
 
-- `src/`：核心库代码
-- `scripts/`：训练和推理入口
-- `configs/`：默认配置
+- `main/src/core.py`：核心库代码
+- `main/train.py`：训练入口
+- `main/test.py`：推理入口
+- `main/configs/`：默认配置
 - `data/`：数据集目录
-- `outputs/`：训练输出目录
-- `docs/`：文档
+- `main/model/`：模型文件目录
+- `main/outputs/`：训练输出目录
 
 ## 输出约定
 
-默认输出目录为 `./outputs/`，其中：
+在 `main/` 目录下运行脚本时，默认输出目录为 `./outputs/`，其中：
 
-- `outputs/checkpoints/`：模型文件
-- `outputs/results/`：训练历史和曲线图
+- `model/`：模型文件
+- `outputs/`：训练历史和曲线图。`training_history.csv` 会按 batch 记录 `batch_loss`、`running_train_loss`，并按 epoch 记录验证指标；`training_curves.png` 会绘制 batch loss、累计训练 loss 和验证 loss。
 
-默认模型路径为 `./outputs/checkpoints/best_model.pth`。
+默认模型路径为 `./model/best_model.pth`。
 
 切换到 ResNet50 后，旧 CNN 结构训练出的 `best_model.pth` 不能直接用于当前推理脚本，需要先重新训练生成新的 ResNet50 checkpoint。
 
 ## 测试代码与模型文件位置
 
-单独用于测试/推理的代码在 `scripts/evaluate.py`，把需要测试的图片放在`./test_images`下即可。
+单独用于测试/推理的代码在 `main/test.py`，把需要测试的图片放在 `main/test_images` 下即可。
 
-该测试代码默认加载的训练好的分类模型文件在 `outputs/checkpoints/best_model.pth`。如果模型文件放在其他位置，可以通过 `--model_path` 指定。
+该测试代码默认加载的训练好的分类模型文件在 `model/best_model.pth`。如果模型文件放在其他位置，可以通过 `--input_model_path` 指定。
 
 ## 使用方法
 
 训练：
 
 ```powershell
-conda run -n myenv python scripts/train.py --data_dir ./data/Hand_Posture_Hard_Stu --epochs 5 --device cuda --progress_interval 10
+cd main
+conda run -n myenv python train.py `
+  --train_data_dir ../data/Hand_Posture_Hard_Stu `
+  --output_model_path ./model/best_model.pth `
+  --output_dir ./outputs `
+  --epochs 5 `
+  --device cuda `
+  --progress_interval 10
 ```
 
 训练脚本默认训练 5 轮、要求使用 GPU 训练，并会每隔 `--progress_interval` 个 batch 打印一次训练进度。可以先检查当前环境是否支持 CUDA：
@@ -50,10 +58,14 @@ conda run -n myenv python -c "import torch; print(torch.cuda.is_available())"
 推理：
 
 ```powershell
-conda run -n myenv python scripts/evaluate.py
+cd main
+conda run -n myenv python test.py `
+  --test_data_dir ./test_images `
+  --input_model_path ./model/best_model.pth
 ```
 
-直接运行 `scripts/evaluate.py` 会自动加载 `outputs/checkpoints/best_model.pth`，并递归检测 `test_images/` 下的常见图片格式。
+直接在 `main/` 目录运行 `test.py` 会自动加载 `model/best_model.pth`，并递归检测 `test_images/` 下的常见图片格式。
+训练脚本也兼容旧参数名 `--data_dir` 和 `--model_path`，测试脚本兼容旧参数名 `--image_dir` 和 `--model_path`。
 
 可编辑安装：
 
@@ -63,4 +75,4 @@ python -m pip install -e .
 
 ## 说明
 
-根目录下不再保留 `train.py`、`test.py`、`utils.py` 这类薄包装文件，统一使用 `scripts/` 下的入口脚本。
+训练和推理入口位于 `main/` 目录下的 `train.py` 和 `test.py`。

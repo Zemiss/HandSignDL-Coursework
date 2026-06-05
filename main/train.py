@@ -7,35 +7,55 @@ import torch
 from torch import nn
 from torch.utils.data import DataLoader, Subset
 
-ROOT = Path(__file__).resolve().parents[1]
+ROOT = Path(__file__).resolve().parent
 sys.path.insert(0, str(ROOT / "src"))
 
-from model import build_model  # noqa: E402
-from preprocessing import (  # noqa: E402
+from core import (  # noqa: E402
     CLASS_NAMES,
     EvalTransform,
     HandPostureDataset,
     TrainTransform,
+    build_model,
+    get_device,
+    load_project_config,
+    save_checkpoint,
     stratified_split_indices,
 )
-from utils import get_device, save_checkpoint  # noqa: E402
 
 
 def parse_args() -> argparse.Namespace:
+    config = load_project_config(ROOT)
     parser = argparse.ArgumentParser(description="Train a hand posture classifier.")
-    parser.add_argument("--data_dir", default="./data/Hand_Posture_Hard_Stu")
-    parser.add_argument("--output_dir", default="./outputs")
-    parser.add_argument("--model_path", default="./outputs/checkpoints/best_model.pth")
-    parser.add_argument("--epochs", type=int, default=5)
-    parser.add_argument("--batch_size", type=int, default=64)
-    parser.add_argument("--lr", type=float, default=1e-3)
-    parser.add_argument("--image_size", type=int, default=224)
-    parser.add_argument("--val_ratio", type=float, default=0.2)
+    parser.add_argument(
+        "--train_data_dir",
+        "--data_dir",
+        dest="data_dir",
+        default=config.get("data_dir", "./data/Hand_Posture_Hard_Stu"),
+        help="Training dataset directory.",
+    )
+    parser.add_argument("--output_dir", default=config.get("output_dir", "./outputs"), help="Training results directory.")
+    parser.add_argument(
+        "--output_model_path",
+        "--model_path",
+        dest="model_path",
+        default=config.get("model_path", "./model/best_model.pth"),
+        help="Path where the best trained model will be saved.",
+    )
+    parser.add_argument("--epochs", type=int, default=config.get("epochs", 5))
+    parser.add_argument("--batch_size", type=int, default=config.get("batch_size", 64))
+    parser.add_argument("--lr", type=float, default=config.get("lr", 1e-3))
+    parser.add_argument("--image_size", type=int, default=config.get("image_size", 224))
+    parser.add_argument("--val_ratio", type=float, default=config.get("val_ratio", 0.2))
     parser.add_argument("--num_workers", type=int, default=0)
-    parser.add_argument("--device", default="cuda", help="cuda or cuda:0. Training requires GPU by default.")
+    parser.add_argument("--device", default=config.get("device", "cuda"), help="cuda or cuda:0. Training requires GPU by default.")
     parser.add_argument("--seed", type=int, default=42)
-    parser.add_argument("--no_pretrained", action="store_true", help="Train ResNet50 without ImageNet weights.")
-    parser.add_argument("--progress_interval", type=int, default=10, help="Print training progress every N batches.")
+    parser.add_argument(
+        "--no_pretrained",
+        action="store_true",
+        default=not config.get("pretrained", True),
+        help="Train ResNet50 without ImageNet weights.",
+    )
+    parser.add_argument("--progress_interval", type=int, default=config.get("progress_interval", 10), help="Print training progress every N batches.")
     return parser.parse_args()
 
 
@@ -63,7 +83,7 @@ def run_epoch(
     progress_interval: int = 0,
     epoch: int | None = None,
     total_epochs: int | None = None,
-) -> tuple[float, float]:
+) -> tuple[float, float, list[dict[str, float | int]]]:
     training = optimizer is not None
     model.train(training)
     total_loss = 0.0
@@ -71,6 +91,7 @@ def run_epoch(
     total_count = 0
     total_batches = len(loader)
 
+    batch_history: list[dict[str, float | int]] = []
     for batch_idx, (images, labels) in enumerate(loader, start=1):
         images = images.to(device)
         labels = labels.to(device)
@@ -86,6 +107,15 @@ def run_epoch(
         total_loss += loss.item() * labels.size(0)
         total_correct += (logits.argmax(dim=1) == labels).sum().item()
         total_count += labels.size(0)
+        if training:
+            batch_history.append(
+                {
+                    "batch": batch_idx,
+                    "batch_loss": loss.item(),
+                    "running_train_loss": total_loss / total_count,
+                    "running_train_acc": total_correct / total_count,
+                }
+            )
         if training and progress_interval > 0 and (batch_idx % progress_interval == 0 or batch_idx == total_batches):
             epoch_label = f"{epoch:03d}/{total_epochs:03d}" if epoch and total_epochs else "???/???"
             avg_loss = total_loss / total_count
@@ -96,7 +126,7 @@ def run_epoch(
                 flush=True,
             )
 
-    return total_loss / total_count, total_correct / total_count
+    return total_loss / total_count, total_correct / total_count, batch_history
 
 
 def evaluate_validation(
@@ -141,28 +171,54 @@ def evaluate_validation(
     return total_loss / total_count, total_correct / total_count, class_acc
 
 
+def _float_values(rows: list[dict[str, str]], key: str) -> list[float]:
+    return [float(row[key]) for row in rows if row.get(key)]
+
+
 def plot_history(history_path: Path, output_path: Path) -> None:
     import matplotlib.pyplot as plt
 
-    rows = list(csv.DictReader(history_path.open(encoding="utf-8")))
-    epochs = [int(row["epoch"]) for row in rows]
-    train_loss = [float(row["train_loss"]) for row in rows]
-    val_loss = [float(row["val_loss"]) for row in rows]
-    train_acc = [float(row["train_acc"]) for row in rows]
-    val_acc = [float(row["val_acc"]) for row in rows]
+    with history_path.open(encoding="utf-8") as handle:
+        rows = list(csv.DictReader(handle))
+    batch_rows = [row for row in rows if row.get("row_type") == "batch"]
+    epoch_rows = [row for row in rows if row.get("row_type") == "epoch"]
+    if not batch_rows and not epoch_rows:
+        epoch_rows = rows
+
+    batch_steps = [int(row["step"]) for row in batch_rows]
+    batch_loss = _float_values(batch_rows, "batch_loss")
+    running_train_loss = _float_values(batch_rows, "running_train_loss")
+    running_train_acc = _float_values(batch_rows, "running_train_acc")
+    epoch_steps = [int(row.get("step") or row["epoch"]) for row in epoch_rows]
+    epochs = [int(row["epoch"]) for row in epoch_rows]
+    train_loss = _float_values(epoch_rows, "train_loss")
+    val_loss = _float_values(epoch_rows, "val_loss")
+    train_acc = _float_values(epoch_rows, "train_acc")
+    val_acc = _float_values(epoch_rows, "val_acc")
 
     plt.figure(figsize=(8, 4))
     plt.subplot(1, 2, 1)
-    plt.plot(epochs, train_loss, label="train")
-    plt.plot(epochs, val_loss, label="val")
-    plt.xlabel("epoch")
+    if batch_rows:
+        plt.plot(batch_steps, batch_loss, label="batch")
+        plt.plot(batch_steps, running_train_loss, label="running train")
+        plt.plot(epoch_steps, val_loss, marker="o", label="val")
+        plt.xlabel("batch step")
+    else:
+        plt.plot(epochs, train_loss, label="train")
+        plt.plot(epochs, val_loss, label="val")
+        plt.xlabel("epoch")
     plt.ylabel("loss")
     plt.legend()
 
     plt.subplot(1, 2, 2)
-    plt.plot(epochs, train_acc, label="train")
-    plt.plot(epochs, val_acc, label="val")
-    plt.xlabel("epoch")
+    if batch_rows:
+        plt.plot(batch_steps, running_train_acc, label="running train")
+        plt.plot(epoch_steps, val_acc, marker="o", label="val")
+        plt.xlabel("batch step")
+    else:
+        plt.plot(epochs, train_acc, label="train")
+        plt.plot(epochs, val_acc, label="val")
+        plt.xlabel("epoch")
     plt.ylabel("accuracy")
     plt.legend()
 
@@ -174,20 +230,22 @@ def plot_history(history_path: Path, output_path: Path) -> None:
 
 def main() -> None:
     args = parse_args()
+    config = load_project_config(ROOT)
+    class_names = config.get("class_names", CLASS_NAMES)
     set_seed(args.seed)
 
     device = resolve_training_device(args.device)
     print(f"training device: {device}", flush=True)
     output_dir = Path(args.output_dir)
-    results_dir = output_dir / "results"
+    results_dir = output_dir
     output_dir.mkdir(parents=True, exist_ok=True)
     results_dir.mkdir(parents=True, exist_ok=True)
 
-    train_source = HandPostureDataset(args.data_dir, transform=TrainTransform(args.image_size))
-    eval_source = HandPostureDataset(args.data_dir, transform=EvalTransform(args.image_size))
+    train_source = HandPostureDataset(args.data_dir, class_names=class_names, transform=TrainTransform(args.image_size))
+    eval_source = HandPostureDataset(args.data_dir, class_names=class_names, transform=EvalTransform(args.image_size))
     train_indices, val_indices = stratified_split_indices(
         train_source.samples,
-        num_classes=len(CLASS_NAMES),
+        num_classes=len(class_names),
         val_ratio=args.val_ratio,
         seed=args.seed,
     )
@@ -205,7 +263,7 @@ def main() -> None:
         num_workers=args.num_workers,
     )
 
-    model = build_model(num_classes=len(CLASS_NAMES), pretrained=not args.no_pretrained).to(device)
+    model = build_model(num_classes=len(class_names), pretrained=not args.no_pretrained).to(device)
     criterion = nn.CrossEntropyLoss()
     optimizer = torch.optim.AdamW(model.parameters(), lr=args.lr, weight_decay=1e-4)
     scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=args.epochs)
@@ -216,16 +274,23 @@ def main() -> None:
         writer = csv.writer(handle)
         writer.writerow(
             [
+                "row_type",
                 "epoch",
+                "batch",
+                "step",
+                "batch_loss",
+                "running_train_loss",
+                "running_train_acc",
                 "train_loss",
                 "train_acc",
                 "val_loss",
                 "val_acc",
-                *[f"val_acc_{class_name}" for class_name in CLASS_NAMES],
+                *[f"val_acc_{class_name}" for class_name in class_names],
             ]
         )
+        global_step = 0
         for epoch in range(1, args.epochs + 1):
-            train_loss, train_acc = run_epoch(
+            train_loss, train_acc, batch_history = run_epoch(
                 model,
                 train_loader,
                 criterion,
@@ -235,11 +300,44 @@ def main() -> None:
                 epoch=epoch,
                 total_epochs=args.epochs,
             )
-            val_loss, val_acc, class_acc = evaluate_validation(model, val_loader, criterion, device, CLASS_NAMES)
+            for batch_record in batch_history:
+                global_step += 1
+                writer.writerow(
+                    [
+                        "batch",
+                        epoch,
+                        batch_record["batch"],
+                        global_step,
+                        batch_record["batch_loss"],
+                        batch_record["running_train_loss"],
+                        batch_record["running_train_acc"],
+                        "",
+                        "",
+                        "",
+                        "",
+                        *["" for _ in class_names],
+                    ]
+                )
+            val_loss, val_acc, class_acc = evaluate_validation(model, val_loader, criterion, device, class_names)
             scheduler.step()
-            writer.writerow([epoch, train_loss, train_acc, val_loss, val_acc, *class_acc])
+            writer.writerow(
+                [
+                    "epoch",
+                    epoch,
+                    "",
+                    global_step,
+                    "",
+                    "",
+                    "",
+                    train_loss,
+                    train_acc,
+                    val_loss,
+                    val_acc,
+                    *class_acc,
+                ]
+            )
             class_summary = " ".join(
-                f"{class_name}={acc:.4f}" for class_name, acc in zip(CLASS_NAMES, class_acc)
+                f"{class_name}={acc:.4f}" for class_name, acc in zip(class_names, class_acc)
             )
             print(
                 f"epoch {epoch:03d}: train_loss={train_loss:.4f} "
@@ -249,7 +347,7 @@ def main() -> None:
 
             if val_acc > best_acc:
                 best_acc = val_acc
-                save_checkpoint(args.model_path, model, CLASS_NAMES, args.image_size, best_acc)
+                save_checkpoint(args.model_path, model, class_names, args.image_size, best_acc)
 
     plot_path = results_dir / "training_curves.png"
     plot_history(history_path, plot_path)
