@@ -34,9 +34,8 @@
 训练命令如下：
 
 ```powershell
-cd main
 conda run -n myenv python train.py `
-  --train_data_dir ../data/Hand_Posture_Hard_Stu `
+  --train_data_dir ./data/Hand_Posture_Hard_Stu `
   --output_model_path ./model/best_model.pth `
   --output_dir ./outputs `
   --epochs 5 `
@@ -47,7 +46,6 @@ conda run -n myenv python train.py `
 推理命令如下：
 
 ```powershell
-cd main
 conda run -n myenv python test.py `
   --test_data_dir ./test_images `
   --input_model_path ./model/best_model.pth

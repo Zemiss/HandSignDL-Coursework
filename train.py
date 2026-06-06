@@ -243,7 +243,7 @@ def main() -> None:
     class_names = data.get("class_names", CLASS_NAMES)
     set_seed(args.seed)
 
-    # Resolve path-like args relative to the project `main` directory (ROOT)
+    # Resolve path-like args relative to the project root.
     def _resolve_relative(p: str | Path) -> Path:
         p = Path(p)
         return p if p.is_absolute() else (ROOT / p)

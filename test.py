@@ -46,6 +46,15 @@ def parse_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
+def resolve_path_args(args: argparse.Namespace) -> None:
+    def _resolve_relative(p: str | Path) -> Path:
+        p = Path(p)
+        return p if p.is_absolute() else (ROOT / p)
+
+    args.image_dir = _resolve_relative(args.image_dir)
+    args.model_path = _resolve_relative(args.model_path)
+
+
 def collect_image_paths(image_dir: str | Path) -> list[Path]:
     root = Path(image_dir)
     return sorted(path for path in root.rglob("*") if path.is_file() and path.suffix.lower() in IMAGE_SUFFIXES)
@@ -85,6 +94,7 @@ def predict_image(
 
 def main() -> None:
     args = parse_args()
+    resolve_path_args(args)
     config = load_project_config(ROOT)
     data = config.get("data", {})
     device = get_device(args.device)

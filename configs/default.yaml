@@ -1,9 +1,9 @@
 project: deeplearn
 
 paths:
-  data_dir: ../data/Hand_Posture_Hard_Stu
-  train_data_dir: ../data/Hand_Posture_Hard_Stu
-  test_data_dir: ../data/Hand_Posture_Hard_Stu
+  data_dir: ./data/Hand_Posture_Hard_Stu
+  train_data_dir: ./data/Hand_Posture_Hard_Stu
+  test_data_dir: ./data/Hand_Posture_Hard_Stu
   output_dir: ./outputs
   model_path: ./model/best_model.pth
   input_model_path: ./model/best_model.pth
