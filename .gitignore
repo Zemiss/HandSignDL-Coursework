@@ -30,4 +30,5 @@ dist/
 
 # Local large data and inference inputs
 data/
+docs/
 
