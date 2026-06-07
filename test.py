@@ -38,7 +38,7 @@ def parse_args() -> argparse.Namespace:
         "--input_model_path",
         "--model_path",
         dest="model_path",
-        default=paths.get("input_model_path", paths.get("model_path", "./model/best_model.pth")),
+        default=paths.get("input_model_path", paths.get("model_path", "./models/best_model.pth")),
         help="Path to a trained .pth model.",
     )
     parser.add_argument("--image_size", type=int, default=None)

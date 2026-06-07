@@ -27,7 +27,7 @@
 |   `-- default.yaml              # 默认训练/测试配置
 |-- data/
 |   `-- Hand_Posture_Hard_Stu/    # 手势图片数据集，按类别目录存放
-|-- model/
+|-- models/
 |   |-- best_model.pth            # 训练得到的最佳模型权重
 |   `-- resnet50-11ad3fa6.pth     # ResNet50 ImageNet 预训练权重
 |-- outputs/
@@ -69,9 +69,9 @@ paths:
   train_data_dir: ./data/Hand_Posture_Hard_Stu
   test_data_dir: ./data/Hand_Posture_Hard_Stu
   output_dir: ./outputs
-  model_path: ./model/best_model.pth
-  input_model_path: ./model/best_model.pth
-  pretrained_weights_path: ./model/resnet50-11ad3fa6.pth
+  model_path: ./models/best_model.pth
+  input_model_path: ./models/best_model.pth
+  pretrained_weights_path: ./models/resnet50-11ad3fa6.pth
 
 train:
   epochs: 7
@@ -110,10 +110,10 @@ train:
 
 | 文件 | 说明 |
 | --- | --- |
-| `model/best_model.pth` | 验证集准确率最高的模型权重 |
+| `models/best_model.pth` | 验证集准确率最高的模型权重 |
 | `outputs/training_history.csv` | 训练过程记录，包含 batch 级损失和 epoch 级验证指标 |
 | `outputs/training_curves.png` | 训练损失、累计训练损失和验证损失曲线 |
-| `model/resnet50-11ad3fa6.pth` | 本地 ResNet50 ImageNet 预训练权重 |
+| `models/resnet50-11ad3fa6.pth` | 本地 ResNet50 ImageNet 预训练权重 |
 
 ## 训练
 
@@ -128,8 +128,8 @@ python train.py
 ```powershell
 python train.py `
   --train_data_dir ./data/Hand_Posture_Hard_Stu `
-  --output_model_path ./model/best_model.pth `
-  --pretrained_weights_path ./model/resnet50-11ad3fa6.pth `
+  --output_model_path ./models/best_model.pth `
+  --pretrained_weights_path ./models/resnet50-11ad3fa6.pth `
   --output_dir ./outputs `
   --epochs 5 `
   --device cuda `
@@ -149,7 +149,7 @@ python test.py
 ```powershell
 python test.py `
   --test_data_dir ./data/Hand_Posture_Hard_Stu `
-  --input_model_path ./model/best_model.pth `
+  --input_model_path ./models/best_model.pth `
   --device cuda
 ```
 

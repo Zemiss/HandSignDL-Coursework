@@ -41,7 +41,7 @@ def parse_args() -> argparse.Namespace:
         "--output_model_path",
         "--model_path",
         dest="model_path",
-        default=paths.get("model_path", "./model/best_model.pth"),
+        default=paths.get("model_path", "./models/best_model.pth"),
         help="Path where the best trained model will be saved.",
     )
     parser.add_argument("--epochs", type=int, default=train_cfg.get("epochs", 5))
@@ -60,7 +60,7 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument(
         "--pretrained_weights_path",
-        default=paths.get("pretrained_weights_path", "./model/resnet50-11ad3fa6.pth"),
+        default=paths.get("pretrained_weights_path", "./models/resnet50-11ad3fa6.pth"),
         help="Local ResNet50 ImageNet weights path. If it exists, training uses it instead of downloading.",
     )
     parser.add_argument("--progress_interval", type=int, default=train_cfg.get("progress_interval", 10), help="Print training progress every N batches.")
